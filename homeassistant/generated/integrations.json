@@ -5971,6 +5971,12 @@
       "config_flow": true,
       "iot_class": "cloud_polling"
     },
+    "unifi_pdu": {
+      "name": "Unifi Smart PDU Pro",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_push"
+    },
     "universal": {
       "name": "Universal Media Player",
       "integration_type": "hub",

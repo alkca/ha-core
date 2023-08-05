@@ -484,6 +484,7 @@ FLOWS = {
         "twinkly",
         "ukraine_alarm",
         "unifi",
+        "unifi_pdu",
         "unifiprotect",
         "upb",
         "upcloud",

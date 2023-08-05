@@ -1,0 +1,13 @@
+{
+  "domain": "unifi_pdu",
+  "name": "Unifi Smart PDU Pro",
+  "codeowners": ["@alkca"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/unifi_pdu",
+  "homekit": {},
+  "iot_class": "local_push",
+  "requirements": ["aiounifi==49"],
+  "ssdp": [],
+  "zeroconf": []
+}
