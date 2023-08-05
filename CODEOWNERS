@@ -1887,6 +1887,8 @@ CLAUDE.md @home-assistant/core
 /homeassistant/components/unifi_direct/ @tofuSCHNITZEL
 /homeassistant/components/unifi_discovery/ @RaHehl
 /tests/components/unifi_discovery/ @RaHehl
+/homeassistant/components/unifi_pdu/ @alkca
+/tests/components/unifi_pdu/ @alkca
 /homeassistant/components/unifiled/ @florisvdk
 /homeassistant/components/unifiprotect/ @RaHehl
 /tests/components/unifiprotect/ @RaHehl

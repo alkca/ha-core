@@ -438,6 +438,7 @@ aiotedee==0.3.0
 aiotractive==1.0.3
 
 # homeassistant.components.unifi
+# homeassistant.components.unifi_pdu
 aiounifi==91
 
 # homeassistant.components.usb

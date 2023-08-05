@@ -796,6 +796,7 @@ FLOWS = {
         "unifi",
         "unifi_access",
         "unifi_discovery",
+        "unifi_pdu",
         "unifiprotect",
         "upb",
         "upcloud",
