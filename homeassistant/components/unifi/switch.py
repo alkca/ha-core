@@ -157,6 +157,16 @@ class UnifiSwitchEntityDescription(
     only_event_for_state_change: bool = False
 
 
+@callback
+def async_outlet_supported_fn(controller: UniFiController, obj_id: str) -> bool:
+    """Check if outlet control is supported.
+
+    However since it seems that 'has_relay' does not always exist or is not always correct, we will always return True.
+    """
+
+    return True
+
+
 ENTITY_DESCRIPTIONS: tuple[UnifiSwitchEntityDescription, ...] = (
     UnifiSwitchEntityDescription[Clients, Client](
         key="Block client",
@@ -210,7 +220,7 @@ ENTITY_DESCRIPTIONS: tuple[UnifiSwitchEntityDescription, ...] = (
         is_on_fn=lambda controller, outlet: outlet.relay_state,
         name_fn=lambda outlet: outlet.name,
         object_fn=lambda api, obj_id: api.outlets[obj_id],
-        supported_fn=lambda c, obj_id: c.api.outlets[obj_id].has_relay,
+        supported_fn=async_outlet_supported_fn,
         unique_id_fn=lambda controller, obj_id: f"{obj_id.split('_', 1)[0]}-outlet-{obj_id.split('_', 1)[1]}",
     ),
     UnifiSwitchEntityDescription[Ports, Port](

@@ -13,9 +13,11 @@ from typing import Generic
 import aiounifi
 from aiounifi.interfaces.api_handlers import ItemEvent
 from aiounifi.interfaces.clients import Clients
+from aiounifi.interfaces.outlets import Outlets
 from aiounifi.interfaces.ports import Ports
 from aiounifi.models.api import ApiItemT
 from aiounifi.models.client import Client
+from aiounifi.models.outlet import Outlet
 from aiounifi.models.port import Port
 
 from homeassistant.components.sensor import (
@@ -148,6 +150,26 @@ ENTITY_DESCRIPTIONS: tuple[UnifiSensorEntityDescription, ...] = (
         supported_fn=lambda controller, obj_id: controller.api.ports[obj_id].port_poe,
         unique_id_fn=lambda controller, obj_id: f"poe_power-{obj_id}",
         value_fn=lambda _, obj: obj.poe_power if obj.poe_mode != "off" else "0",
+    ),
+    UnifiSensorEntityDescription[Outlets, Outlet](
+        key="Outlet power sensor",
+        device_class=SensorDeviceClass.POWER,
+        entity_category=None,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        has_entity_name=True,
+        allowed_fn=lambda controller, obj_id: True,
+        api_handler_fn=lambda api: api.outlets,
+        available_fn=async_device_available_fn,
+        device_info_fn=async_device_device_info_fn,
+        event_is_on=None,
+        event_to_subscribe=None,
+        name_fn=lambda outlet: f"{outlet.name} Power",
+        object_fn=lambda api, obj_id: api.outlets[obj_id],
+        # supported_fn=lambda c, obj_id: c.api.outlets[obj_id].has_relay,
+        supported_fn=lambda controller, obj_id: controller.api.outlets[obj_id].power
+        is not None,
+        unique_id_fn=lambda controller, obj_id: f"{obj_id.split('_', 1)[0]}-outlet_power-{obj_id.split('_', 1)[1]}",
+        value_fn=lambda _, obj: obj.power,
     ),
     UnifiSensorEntityDescription[Clients, Client](
         key="Uptime sensor",
