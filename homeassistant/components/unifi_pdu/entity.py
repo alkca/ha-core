@@ -129,6 +129,13 @@ class UnifiEntity(Entity, Generic[HandlerT, ApiItemT]):
                 id_filter=self._obj_id,
             )
         )
+        # if self._obj_id == "d8:b3:70:32:01:dd_1":
+        #     self.async_on_remove(
+        #         handler.subscribe(
+        #             self.async_signalling_callback,
+        #             id_filter="d8:b3:70:32:01:dd",
+        #         )
+        #     )
 
         # State change from controller or websocket
         self.async_on_remove(

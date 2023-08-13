@@ -1,5 +1,6 @@
 """UniFi Network abstraction."""
 import asyncio
+from datetime import datetime, timedelta
 import logging
 import ssl
 
@@ -15,15 +16,24 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
+    async_dispatcher_send,
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
+import homeassistant.util.dt as dt_util
 
+from .const import (
+    PLATFORMS,
+)
 from .entity import UnifiEntity, UnifiEntityDescription
 from .errors import CannotConnect, InvalidAuth
+
+RETRY_TIMER = 15
+CHECK_HEARTBEAT_INTERVAL = timedelta(seconds=1)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +63,9 @@ class UniFiController:
         self.site_id: str = ""
         self._site_name: str | None = None
         self._site_role: str | None = None
+
+        self._cancel_heartbeat_check: CALLBACK_TYPE | None = None
+        self._heartbeat_time: dict[str, datetime] = {}
 
         self.entities: dict[str, str] = {}
         self.known_objects: set[tuple[str, str]] = set()
@@ -122,6 +135,11 @@ class UniFiController:
         """Event specific per UniFi entry to signal new options."""
         return f"unifi-options-{self.config_entry.entry_id}"
 
+    @property
+    def signal_heartbeat_missed(self) -> str:
+        """Event specific per UniFi device tracker to signal new heartbeat missed."""
+        return "unifi-heartbeat-missed"
+
     async def initialize(self) -> None:
         """Set up a UniFi Network instance."""
         await self.api.initialize()
@@ -135,6 +153,77 @@ class UniFiController:
 
         description = await self.api.site_description()
         self._site_role = description[0]["site_role"]
+
+        self._cancel_heartbeat_check = async_track_time_interval(
+            self.hass, self._async_check_for_stale, CHECK_HEARTBEAT_INTERVAL
+        )
+
+    @callback
+    def _async_check_for_stale(self, *_: datetime) -> None:
+        """Check for any devices scheduled to be marked disconnected."""
+        now = dt_util.utcnow()
+
+        unique_ids_to_remove = []
+        for unique_id, heartbeat_expire_time in self._heartbeat_time.items():
+            if now > heartbeat_expire_time:
+                async_dispatcher_send(
+                    self.hass, f"{self.signal_heartbeat_missed}_{unique_id}"
+                )
+                unique_ids_to_remove.append(unique_id)
+
+        for unique_id in unique_ids_to_remove:
+            del self._heartbeat_time[unique_id]
+
+    @callback
+    def reconnect(self, log: bool = False) -> None:
+        """Prepare to reconnect UniFi session."""
+        if log:
+            _LOGGER.info("Will try to reconnect to UniFi Network")
+        self.hass.loop.create_task(self.async_reconnect())
+
+    async def async_reconnect(self) -> None:
+        """Try to reconnect UniFi Network session."""
+        try:
+            async with async_timeout.timeout(5):
+                await self.api.login()
+                self.api.start_websocket()
+
+        except (
+            asyncio.TimeoutError,
+            aiounifi.BadGateway,
+            aiounifi.ServiceUnavailable,
+            aiounifi.AiounifiException,
+        ):
+            self.hass.loop.call_later(RETRY_TIMER, self.reconnect)
+
+    @callback
+    def shutdown(self, event: Event) -> None:
+        """Wrap the call to unifi.close.
+
+        Used as an argument to EventBus.async_listen_once.
+        """
+        self.api.stop_websocket()
+
+    async def async_reset(self) -> bool:
+        """Reset this controller to default state.
+
+        Will cancel any scheduled setup retry and will unload
+        the config entry.
+        """
+        self.api.stop_websocket()
+
+        unload_ok = await self.hass.config_entries.async_unload_platforms(
+            self.config_entry, PLATFORMS
+        )
+
+        if not unload_ok:
+            return False
+
+        if self._cancel_heartbeat_check:
+            self._cancel_heartbeat_check()
+            self._cancel_heartbeat_check = None
+
+        return True
 
 
 async def get_unifi_controller(

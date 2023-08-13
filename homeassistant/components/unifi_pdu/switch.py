@@ -36,6 +36,11 @@ from .entity import (
     async_device_device_info_fn,
 )
 
+# OUTLET_STATE = (
+#     EventKey.SWITCH_CONFIGURED,
+#     EventKey.SWITCH_CONNECTED,
+# )
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -85,9 +90,13 @@ ENTITY_DESCRIPTIONS: tuple[UnifiSwitchEntityDescription, ...] = (
         device_info_fn=async_device_device_info_fn,
         event_is_on=None,
         event_to_subscribe=None,
+        # event_to_subscribe=OUTLET_STATE,
         # is_on_fn=async_is_on_fn,
-        is_on_fn=lambda controller, outlet: outlet.relay_state,
-        # is_on_fn=lambda controller, outlet: bool(random.getrandbits(1)),
+        is_on_fn=lambda controller, outlet: (
+            # _LOGGER.info(f"state: {outlet.relay_state}"),
+            outlet.relay_state,
+        )[0],
+        # is_on_fn=lambda controller, outlet: outlet.relay_state,
         name_fn=lambda outlet: outlet.name,
         object_fn=lambda api, obj_id: api.outlets[obj_id],
         supported_fn=lambda c, obj_id: True,
@@ -121,11 +130,6 @@ class UnifiSwitchEntity(UnifiEntity[HandlerT, ApiItemT], SwitchEntity):
     entity_description: UnifiSwitchEntityDescription[HandlerT, ApiItemT]
     only_event_for_state_change = False
 
-    # @property
-    # def is_on(self) -> bool:
-    #     """If the switch is currently on or off."""
-    #     return self._is_on
-
     @callback
     def async_initiate_state(self) -> None:
         """Initiate entity state."""
@@ -140,6 +144,7 @@ class UnifiSwitchEntity(UnifiEntity[HandlerT, ApiItemT], SwitchEntity):
             self.controller.api, self._obj_id, True
         )
         self._attr_is_on = True
+        self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off switch."""
@@ -147,6 +152,7 @@ class UnifiSwitchEntity(UnifiEntity[HandlerT, ApiItemT], SwitchEntity):
             self.controller.api, self._obj_id, False
         )
         self._attr_is_on = False
+        self.async_schedule_update_ha_state()
 
     @callback
     def async_update_state(self, event: ItemEvent, obj_id: str) -> None:
